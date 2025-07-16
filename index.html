@@ -49,14 +49,14 @@
             min-height: 2.5rem; /* Match input height */
             vertical-align: middle;
         }
-        /* Transition for the collapsible section */
-        #configSection {
+        /* Transition for the collapsible sections */
+        #configSection, #productSearchSection {
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.5s ease-in-out;
         }
-        #configSection.open {
-            max-height: 500px; /* Adjust as needed */
+        #configSection.open, #productSearchSection.open {
+            max-height: 1000px; /* Adjust as needed, can be a large value */
         }
     </style>
 </head>
@@ -135,6 +135,27 @@
                             <p class="text-sm text-gray-600 mb-2">URL de tu aplicación web para guardar el historial de ventas.</p>
                             <input type="url" id="salesApiUrl" placeholder="Pega aquí la URL de tu aplicación web" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" value="https://script.google.com/macros/s/AKfycbw6ys16kj9oFqaxtY8QbrQ8FYHipPZ8ixTEDauvHTOE0kLBCsMxBTbutKo3mEL0sDA/exec">
                             <p id="savingStatus" class="text-sm text-gray-500 mt-2"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Toggle Button for Product Search -->
+                <div class="mb-4">
+                    <button id="toggleSearchBtn" class="w-full flex justify-center items-center px-5 py-3 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-50 transition duration-200">
+                        <span>Buscador de Productos</span>
+                        <svg id="searchArrowIcon" class="w-5 h-5 ml-2 transition-transform transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                </div>
+
+                <!-- Product Search Section (Collapsible) -->
+                <div id="productSearchSection">
+                    <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4">Buscar Productos</h2>
+                        <div class="mb-4">
+                            <input type="text" id="productSearchInput" placeholder="Buscar por Nombre o SKU..." class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div id="productSearchResults" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            <!-- Search results will be dynamically inserted here -->
                         </div>
                     </div>
                 </div>
@@ -348,6 +369,13 @@
             const downloadReportBtn = document.getElementById('downloadReportBtn');
             const reportTitle = document.getElementById('reportTitle');
             
+            // --- NEW SEARCH ELEMENTS ---
+            const toggleSearchBtn = document.getElementById('toggleSearchBtn');
+            const productSearchSection = document.getElementById('productSearchSection');
+            const searchArrowIcon = document.getElementById('searchArrowIcon');
+            const productSearchInput = document.getElementById('productSearchInput');
+            const productSearchResults = document.getElementById('productSearchResults');
+
             let saleCounter = 1;
             let productsData = [];
             let isReprintMode = false;
@@ -400,6 +428,63 @@
                     configSection.classList.toggle('open');
                     arrowIcon.classList.toggle('rotate-180');
                 });
+                
+                // --- NEW SEARCH TOGGLE ---
+                toggleSearchBtn.addEventListener('click', () => {
+                    productSearchSection.classList.toggle('open');
+                    searchArrowIcon.classList.toggle('rotate-180');
+                });
+                
+                productSearchInput.addEventListener('input', (e) => {
+                    const searchTerm = e.target.value.toLowerCase().trim();
+                    if (!searchTerm) {
+                        renderSearchResults(productsData); // Show all if search is empty
+                        return;
+                    }
+                    const filteredProducts = productsData.filter(product => 
+                        product.name.toLowerCase().includes(searchTerm) || 
+                        (product.sku && product.sku.toLowerCase().includes(searchTerm))
+                    );
+                    renderSearchResults(filteredProducts);
+                });
+
+                const formatCurrency = (value) => {
+                    const numberValue = Number(value);
+                    if (isNaN(numberValue)) return 'Bs. 0.00';
+                    return `Bs. ${numberValue.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                };
+
+                function renderSearchResults(products) {
+                    productSearchResults.innerHTML = ''; // Clear previous results
+                    if (products.length === 0) {
+                        productSearchResults.innerHTML = '<p class="col-span-full text-center text-gray-500">No se encontraron productos.</p>';
+                        return;
+                    }
+
+                    products.forEach(product => {
+                        const card = document.createElement('div');
+                        card.className = 'bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-transform duration-200';
+                        
+                        const formattedPrice = formatCurrency(product.price);
+                        const formattedCost = formatCurrency(product.cost);
+                        const formattedWholesale = formatCurrency(product.wholesale);
+
+                        card.innerHTML = `
+                            <img src="${product.photoUrl}" alt="${product.name}" class="w-full h-48 object-cover" onerror="this.onerror=null; this.src='https://placehold.co/400x400/e2e8f0/94a3b8?text=Sin+Imagen';">
+                            <div class="p-4">
+                                <h3 class="font-bold text-md mb-2 truncate" title="${product.name}">${product.name}</h3>
+                                <p class="text-sm text-gray-600">SKU: ${product.sku || 'N/A'}</p>
+                                <p class="text-sm text-gray-600">Stock: ${product.quantity}</p>
+                                <div class="mt-2 text-sm">
+                                    <p><span class="font-semibold">Precio:</span> ${formattedPrice}</p>
+                                    <p><span class="font-semibold">Costo:</span> ${formattedCost}</p>
+                                    <p><span class="font-semibold">Mayoreo:</span> ${formattedWholesale}</p>
+                                </div>
+                            </div>
+                        `;
+                        productSearchResults.appendChild(card);
+                    });
+                }
 
                 async function loadProducts() {
                     const url = googleSheetUrlInput.value.trim();
@@ -418,19 +503,24 @@
                         const csvText = await response.text();
                         
                         const rows = csvText.split('\n').slice(1);
+                        // Columns: Nombre, Precio, Compra, Mayoreo, SKU, Cantidad, Foto 1
                         productsData = rows.map(row => {
-                            const columns = row.split(',');
-                            if (columns.length >= 5 && columns[0] && columns[1]) {
+                            const columns = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                            if (columns.length >= 7 && columns[0]) {
                                 return {
-                                    name: columns[0].trim().replace(/"/g, ''),
-                                    price: parseFloat(columns[1].trim()) || 0,
-                                    cost: parseFloat(columns[2].trim()) || 0,
-                                    sku: columns[4] ? columns[4].trim().replace(/"/g, '') : ''
+                                    name: (columns[0] || '').trim().replace(/"/g, ''),
+                                    price: parseFloat((columns[1] || '0').trim()) || 0,
+                                    cost: parseFloat((columns[2] || '0').trim()) || 0, // Compra
+                                    wholesale: parseFloat((columns[3] || '0').trim()) || 0, // Mayoreo
+                                    sku: (columns[4] || '').trim().replace(/"/g, ''),
+                                    quantity: parseInt((columns[5] || '0').trim()) || 0, // Cantidad
+                                    photoUrl: (columns[6] || '').trim().replace(/"/g, '') // Foto 1
                                 };
                             }
                             return null;
-                        }).filter(p => p !== null);
+                        }).filter(p => p && p.name);
 
+                        // Populate the datalist for the POS table
                         productListDatalist.innerHTML = '';
                         productsData.forEach(product => {
                             const nameOption = document.createElement('option');
@@ -443,6 +533,9 @@
                             }
                         });
 
+                        // Initial render of the product search gallery
+                        renderSearchResults(productsData); 
+
                         loadingStatusEl.textContent = `¡${productsData.length} productos cargados exitosamente!`;
                         loadingStatusEl.style.color = 'green';
 
@@ -450,6 +543,7 @@
                         console.error('Error loading products:', error);
                         loadingStatusEl.textContent = `Error: ${error.message}`;
                         loadingStatusEl.style.color = 'red';
+                        renderSearchResults([]); // Clear results on error
                     }
                 }
 
@@ -572,12 +666,6 @@
                 const saleDate = today.toLocaleDateString('es-BO');
                 document.getElementById('currentDate').textContent = saleDate;
 
-                const formatCurrency = (value) => {
-                    const numberValue = Number(value);
-                    if (isNaN(numberValue)) return 'Bs. 0.00';
-                    return `Bs. ${numberValue.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                };
-
                 const updateTotals = () => {
                     let subtotal = 0;
                     const rows = productRowsContainer.querySelectorAll('tr');
@@ -620,7 +708,6 @@
                             row.querySelector('.sku').value = selectedProduct.sku;
                             row.querySelector('.unit-cost').value = selectedProduct.price;
                             
-                            // Automatically add a new row if the current one is the last one
                             if (row === productRowsContainer.lastElementChild) {
                                 addRow();
                             }
@@ -648,7 +735,6 @@
                     const docType = isQuote ? 'Cotizacion' : 'Nota_Venta';
                     const fileName = `${docType}_${currentSaleNumber}_${clientName.replace(/ /g, '_')}.pdf`;
 
-                    // Prepare receipt for canvas capture
                     const originalTitle = receiptTitleEl.textContent;
                     receiptTitleEl.textContent = isQuote ? 'Cotización' : 'Nota de Venta';
                     if (isQuote) {
@@ -713,23 +799,21 @@
                         pdf.addImage(imgData, 'JPEG', margin, margin, contentWidth, imgHeight);
                         pdf.save(fileName);
                         
-                        // Only save the sale if it's NOT a quote and NOT a reprint
                         if (!isQuote && !isReprint) {
                             saveSale(saleData).then(() => {
-                                fetchAndSetSaleNumber(); // Get the next sale number
+                                fetchAndSetSaleNumber();
                             });
                         }
 
                     }).catch(err => {
                         console.error("Error generating PDF:", err);
                     }).finally(() => {
-                        // Cleanup: Restore the original state of the receipt
                         receiptEl.style.width = originalWidth;
                         actionCols.forEach(col => col.style.display = '');
                         addProductBtn.style.display = '';
                         document.querySelectorAll('.pdf-text-replacement').forEach(span => span.remove());
                         inputs.forEach(input => input.style.display = '');
-                        receiptTitleEl.textContent = originalTitle; // Restore title
+                        receiptTitleEl.textContent = originalTitle;
                         if (isQuote) {
                             saleNumberLine.style.display = '';
                             quoteValidityLine.style.display = 'none';
@@ -857,7 +941,7 @@
                         const pdf = new jsPDF({
                             orientation: 'p',
                             unit: 'mm',
-                            format: [imgWidth + 20, imgHeight + 40] // Custom format to fit all content
+                            format: [imgWidth + 20, imgHeight + 40]
                         });
                         
                         pdf.text(reportPDFTitle, 10, 15);
