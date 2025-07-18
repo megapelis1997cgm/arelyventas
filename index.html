@@ -152,7 +152,7 @@
                     <div class="bg-white p-6 rounded-lg shadow-md mb-8">
                         <h2 class="text-2xl font-bold text-gray-800 mb-4">Buscar Productos</h2>
                         <div class="mb-4">
-                            <input type="text" id="productSearchInput" placeholder="Buscar por Nombre o SKU..." class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="text" id="productSearchInput" placeholder="Buscar por Nombre, SKU o Código..." class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                         <div id="productSearchResults" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                             <!-- Search results will be dynamically inserted here -->
@@ -443,7 +443,8 @@
                     }
                     const filteredProducts = productsData.filter(product => 
                         product.name.toLowerCase().includes(searchTerm) || 
-                        (product.sku && product.sku.toLowerCase().includes(searchTerm))
+                        (product.sku && product.sku.toLowerCase().includes(searchTerm)) ||
+                        (product.code && product.code.toLowerCase().includes(searchTerm))
                     );
                     renderSearchResults(filteredProducts);
                 });
@@ -474,6 +475,7 @@
                             <div class="p-4">
                                 <h3 class="font-bold text-md mb-2 truncate" title="${product.name}">${product.name}</h3>
                                 <p class="text-sm text-gray-600">SKU: ${product.sku || 'N/A'}</p>
+                                <p class="text-sm text-gray-600">Código: ${product.code || 'N/A'}</p>
                                 <p class="text-sm text-gray-600">Stock: ${product.quantity}</p>
                                 <div class="mt-2 text-sm">
                                     <p><span class="font-semibold">Precio:</span> ${formattedPrice}</p>
@@ -503,10 +505,10 @@
                         const csvText = await response.text();
                         
                         const rows = csvText.split('\n').slice(1);
-                        // Columns: Nombre, Precio, Compra, Mayoreo, SKU, Cantidad, Foto 1
+                        // Columns: Nombre, Precio, Compra, Mayoreo, SKU, Cantidad, Foto 1, Code
                         productsData = rows.map(row => {
                             const columns = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                            if (columns.length >= 7 && columns[0]) {
+                            if (columns.length >= 8 && columns[0]) {
                                 return {
                                     name: (columns[0] || '').trim().replace(/"/g, ''),
                                     price: parseFloat((columns[1] || '0').trim()) || 0,
@@ -514,7 +516,8 @@
                                     wholesale: parseFloat((columns[3] || '0').trim()) || 0, // Mayoreo
                                     sku: (columns[4] || '').trim().replace(/"/g, ''),
                                     quantity: parseInt((columns[5] || '0').trim()) || 0, // Cantidad
-                                    photoUrl: (columns[6] || '').trim().replace(/"/g, '') // Foto 1
+                                    photoUrl: (columns[6] || '').trim().replace(/"/g, ''), // Foto 1
+                                    code: (columns[7] || '').trim().replace(/"/g, '') // Code
                                 };
                             }
                             return null;
@@ -530,6 +533,11 @@
                                 const skuOption = document.createElement('option');
                                 skuOption.value = product.sku;
                                 productListDatalist.appendChild(skuOption);
+                            }
+                            if (product.code) {
+                                const codeOption = document.createElement('option');
+                                codeOption.value = product.code;
+                                productListDatalist.appendChild(codeOption);
                             }
                         });
 
@@ -687,7 +695,7 @@
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td class="px-2 py-2"><input type="number" class="quantity" value="1" min="1"></td>
-                        <td class="px-2 py-2"><input type="text" class="product-name" placeholder="Nombre o SKU" list="productList"></td>
+                        <td class="px-2 py-2"><input type="text" class="product-name" placeholder="Nombre, SKU o Código" list="productList"></td>
                         <td class="px-2 py-2"><input type="text" class="sku bg-gray-100" placeholder="SKU" readonly></td>
                         <td class="px-2 py-2"><input type="number" class="unit-cost" placeholder="0.00" step="0.01"></td>
                         <td class="px-2 py-2"><input type="number" class="discount" value="0" min="0" max="100"></td>
@@ -701,7 +709,7 @@
                 productRowsContainer.addEventListener('input', (e) => {
                     if (e.target.classList.contains('product-name')) {
                         const inputValue = e.target.value;
-                        const selectedProduct = productsData.find(p => p.name === inputValue || p.sku === inputValue);
+                        const selectedProduct = productsData.find(p => p.name === inputValue || p.sku === inputValue || p.code === inputValue);
                         if (selectedProduct) {
                             const row = e.target.closest('tr');
                             row.querySelector('.product-name').value = selectedProduct.name;
