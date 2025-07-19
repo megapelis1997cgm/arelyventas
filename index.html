@@ -520,6 +520,12 @@
 
                     loadingStatusEl.textContent = 'Cargando productos...';
                     loadingStatusEl.style.color = 'gray';
+                    const refreshIcon = refreshProductsBtn.querySelector('svg');
+                    
+                    // Add animations and disable button
+                    refreshProductsBtn.disabled = true;
+                    refreshProductsBtn.classList.add('animate-pulse');
+                    refreshIcon.classList.add('animate-spin');
 
                     try {
                         // Add a cache-busting query parameter
@@ -576,6 +582,11 @@
                         loadingStatusEl.textContent = `Error: ${error.message}`;
                         loadingStatusEl.style.color = 'red';
                         renderSearchResults([]); // Clear results on error
+                    } finally {
+                        // Remove animations and re-enable button
+                        refreshProductsBtn.disabled = false;
+                        refreshProductsBtn.classList.remove('animate-pulse');
+                        refreshIcon.classList.remove('animate-spin');
                     }
                 }
 
